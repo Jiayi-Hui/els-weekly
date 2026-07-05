@@ -77,12 +77,13 @@ python3 tools/wechat_ui_harvester/harvest_chat.py \
 
 ```bash
 python3 tools/wechat_ui_harvester/harvest_chat.py \
-  --pages 300 \
+  --pages 600 \
   --direction newer \
   --scroll 36 \
   --delay-min 0.8 \
   --delay-max 1.5 \
   --crop 0.20,0.06,0.02,0.32 \
+  --segment-pages 100 \
   --stop-after-stable-pages 4 \
   --stop-after-duplicate-pages 6 \
   --output tools/wechat_ui_harvester/output/chat_full.jsonl \
@@ -92,6 +93,7 @@ python3 tools/wechat_ui_harvester/harvest_chat.py \
 建议：
 
 - `--scroll` 可以比初次小心采集更大，但要保留上下文重叠。
+- `--segment-pages 100` 会自动生成 `chat_full_part001.jsonl`、`chat_full_part002.jsonl` 等分段文件；每页 OCR 后仍会立即写入并 flush。
 - `--stop-after-stable-pages 4` 用于到最新消息后自动停。
 - 正式采集不要开 `--dedupe-lines`，否则可能丢重复短消息。
 

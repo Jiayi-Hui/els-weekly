@@ -30,7 +30,9 @@
 - `tools/wechat_ui_harvester/reocr_captures.py`
 - `tools/wechat_ui_harvester/extract_attachments.py`
 - `tools/wechat_ui_harvester/README.md`
+- `skills/els-weekly/`
 - `docs/`
+- `AGENTS.md`
 - `.gitignore`
 - `requirements.txt`
 
@@ -71,17 +73,20 @@ python3 tools/wechat_ui_harvester/harvest_chat.py \
 
 ```bash
 python3 tools/wechat_ui_harvester/harvest_chat.py \
-  --pages 300 \
+  --pages 600 \
   --direction newer \
   --scroll 36 \
   --delay-min 0.8 \
   --delay-max 1.5 \
   --crop 0.20,0.06,0.02,0.32 \
+  --segment-pages 100 \
   --stop-after-stable-pages 4 \
   --stop-after-duplicate-pages 6 \
   --output tools/wechat_ui_harvester/output/chat_run.jsonl \
   --overwrite
 ```
+
+With `--segment-pages 100`, the script writes files like `chat_run_part001.jsonl` and `chat_run_part002.jsonl` while still flushing after every page.
 
 5. 抽取附件目录文本：
 

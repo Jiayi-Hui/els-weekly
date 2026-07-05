@@ -1,0 +1,4 @@
+interface:
+  display_name: "ELS Weekly"
+  short_description: "WeChat OCR to research weekly workflow"
+  default_prompt: "Use $els-weekly to collect a visible WeChat group, extract attachments, and produce a private weekly research report."

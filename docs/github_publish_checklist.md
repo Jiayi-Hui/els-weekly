@@ -11,7 +11,7 @@
 ## Files Safe To Commit
 
 ```bash
-git add .gitignore README.md requirements.txt docs \
+git add AGENTS.md .gitignore README.md requirements.txt docs skills/els-weekly \
   tools/wechat_ui_harvester/README.md \
   tools/wechat_ui_harvester/capture_window.py \
   tools/wechat_ui_harvester/ocr_image.py \
@@ -55,7 +55,7 @@ This search may match docs intentionally. For a public repo, remove or generaliz
 ```bash
 git init
 git branch -M main
-git add .gitignore README.md requirements.txt docs \
+git add AGENTS.md .gitignore README.md requirements.txt docs skills/els-weekly \
   tools/wechat_ui_harvester/README.md \
   tools/wechat_ui_harvester/capture_window.py \
   tools/wechat_ui_harvester/ocr_image.py \

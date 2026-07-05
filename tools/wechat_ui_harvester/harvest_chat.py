@@ -28,18 +28,39 @@ def file_signature(path):
     return hashlib.sha1(path.read_bytes()).hexdigest()
 
 
-def load_existing_signatures(output):
+def segment_output_path(output, segment_index):
+    if segment_index is None:
+        return output
+    suffix = output.suffix or ".jsonl"
+    return output.with_name(f"{output.stem}_part{segment_index:03d}{suffix}")
+
+
+def existing_output_paths(output, segment_pages):
+    if segment_pages <= 0:
+        return [output] if output.exists() else []
+    suffix = output.suffix or ".jsonl"
+    return sorted(output.parent.glob(f"{output.stem}_part*{suffix}"))
+
+
+def remove_existing_segments(output):
+    suffix = output.suffix or ".jsonl"
+    for path in output.parent.glob(f"{output.stem}_part*{suffix}"):
+        path.unlink()
+
+
+def load_existing_signatures(outputs):
     signatures = set()
-    if not output.exists():
-        return signatures
-    with output.open("r", encoding="utf-8") as f:
-        for line in f:
-            try:
-                text = normalize_text(json.loads(line).get("text", ""))
-            except Exception:
-                continue
-            if text:
-                signatures.add(hashlib.sha1(text.encode("utf-8")).hexdigest())
+    for output in outputs:
+        if not output.exists():
+            continue
+        with output.open("r", encoding="utf-8") as f:
+            for line in f:
+                try:
+                    text = normalize_text(json.loads(line).get("text", ""))
+                except Exception:
+                    continue
+                if text:
+                    signatures.add(hashlib.sha1(text.encode("utf-8")).hexdigest())
     return signatures
 
 
@@ -66,6 +87,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pages", type=int, default=8)
     parser.add_argument("--output", default="tools/wechat_ui_harvester/output/harvest.jsonl")
+    parser.add_argument(
+        "--segment-pages",
+        type=int,
+        default=0,
+        help="write a new output file every N captured pages; 0 keeps the legacy single-file output",
+    )
     parser.add_argument("--captures-dir", default="tools/wechat_ui_harvester/captures")
     parser.add_argument("--crop", default="0.30,0.06,0.02,0.32")
     parser.add_argument("--scroll", type=int, default=7, help="positive values scroll upward in most WeChat builds")
@@ -107,6 +134,10 @@ def main():
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
+    if args.segment_pages < 0:
+        raise SystemExit("--segment-pages must be 0 or greater")
+    if args.segment_pages and args.overwrite:
+        remove_existing_segments(output)
     captures_dir = Path(args.captures_dir)
     captures_dir.mkdir(parents=True, exist_ok=True)
 
@@ -122,10 +153,12 @@ def main():
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     seen_pages = set()
     if args.dedupe_lines:
-        seen_lines = set() if args.overwrite else load_existing_signatures(output)
+        existing_outputs = existing_output_paths(output, args.segment_pages)
+        seen_lines = set() if args.overwrite else load_existing_signatures(existing_outputs)
     else:
         seen_lines = set()
     written = 0
+    output_paths = []
     last_image_sig = None
     stable_pages = 0
     duplicate_pages = 0
@@ -133,8 +166,20 @@ def main():
     time.sleep(0.3)
 
     mode = "w" if args.overwrite else "a"
-    with output.open(mode, encoding="utf-8") as f:
+    f = None
+    current_output = None
+    try:
         for page in range(args.pages):
+            segment_index = (page // args.segment_pages + 1) if args.segment_pages else None
+            page_output = segment_output_path(output, segment_index)
+            if page_output != current_output:
+                if f:
+                    f.close()
+                current_output = page_output
+                page_output.parent.mkdir(parents=True, exist_ok=True)
+                f = page_output.open(mode, encoding="utf-8")
+                output_paths.append(str(page_output))
+
             captured_at = datetime.now().isoformat(timespec="seconds")
             full_path = captures_dir / f"page_{run_id}_{page:03d}.png"
             crop_path = captures_dir / f"page_{run_id}_{page:03d}_chat.png"
@@ -164,6 +209,7 @@ def main():
                     record = {
                         "run_id": run_id,
                         "page": page,
+                        "segment": segment_index,
                         "row_index": row_index,
                         "captured_at": captured_at,
                         "text": text,
@@ -181,6 +227,8 @@ def main():
                         {
                             "page": page,
                             "new_lines": len(page_lines),
+                            "output": str(page_output),
+                            "segment": segment_index,
                             "capture": str(crop_path),
                             "crop": crop_info,
                             "stable_pages": stable_pages,
@@ -196,6 +244,8 @@ def main():
                         {
                             "page": page,
                             "duplicate_page": True,
+                            "output": str(page_output),
+                            "segment": segment_index,
                             "capture": str(crop_path),
                             "stable_pages": stable_pages,
                             "duplicate_pages": duplicate_pages,
@@ -219,8 +269,15 @@ def main():
             scroll_amount = args.scroll + random.randint(-2, 2)
             scroll_at(center_x, center_y, scroll_amount)
             time.sleep(random.uniform(0.35, 0.9))
+    finally:
+        if f:
+            f.close()
 
-    print(json.dumps({"output": str(output), "written_lines": written}, ensure_ascii=False))
+    summary = {"output": str(output), "written_lines": written}
+    if args.segment_pages:
+        summary["segment_pages"] = args.segment_pages
+        summary["output_files"] = output_paths
+    print(json.dumps(summary, ensure_ascii=False))
 
 
 if __name__ == "__main__":

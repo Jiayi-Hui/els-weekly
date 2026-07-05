@@ -62,12 +62,13 @@ When starting from the current chat position and scrolling toward newer messages
 
 ```bash
 python3 tools/wechat_ui_harvester/harvest_chat.py \
-  --pages 300 \
+  --pages 600 \
   --direction newer \
   --scroll 36 \
   --delay-min 0.8 \
   --delay-max 1.5 \
   --crop 0.20,0.06,0.02,0.32 \
+  --segment-pages 100 \
   --stop-after-stable-pages 4 \
   --stop-after-duplicate-pages 6 \
   --output tools/wechat_ui_harvester/output/chat_full.jsonl \
@@ -75,6 +76,8 @@ python3 tools/wechat_ui_harvester/harvest_chat.py \
 ```
 
 `--stop-after-stable-pages` stops when consecutive cropped screenshots are byte-identical, which usually means the chat can no longer scroll in that direction. `--stop-after-duplicate-pages` is a looser OCR-based fallback.
+
+`--segment-pages 100` writes `chat_full_part001.jsonl`, `chat_full_part002.jsonl`, and so on. Each page is still flushed immediately, so an interrupted overnight run keeps the completed segment files.
 
 ## Attachment extraction
 
